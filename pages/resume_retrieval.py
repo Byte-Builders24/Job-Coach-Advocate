@@ -1,80 +1,87 @@
 import streamlit as st
-from azure.search.documents import SearchClient
-from azure.core.credentials import AzureKeyCredential
-import os
+from search_service import search_candidates
 
-# Streamlit Resume Retrieval Page
 st.title("Resume Retrieval")
-st.subheader("View all resumes stored in the system")
+st.subheader("View resumes stored in the system")
 
-# Add a search box for semantic sorting
-query_text = st.text_input("Search Resumes (optional):", placeholder="Enter a query to sort resumes semantically")
+# Let the user enter a query
+query_text = st.text_input("Enter a query (e.g., 'Who makes a good engineer?'):")
 
-try:
-    with st.spinner("Loading resumes..."):
-        # Fetch resumes with semantic sorting
-        results = search_candidates(query_text=query_text, top_k=100)
-
-    # Display results
-    if results:
-        st.write("### Resumes")
-        for result in results:
-            st.write(f"**ID**: {result['id']}")
-            st.write(f"**Resume Content**: {result['content'][:500]}...")  # Display first 500 characters
-            st.write("---")
-    else:
-        st.info("No resumes found.")
-except Exception as e:
-    st.error(f"Failed to load resumes: {e}")
-
-def search_candidates(query_text=None, top_k=100):
-    """
-    Perform a text-based search in Azure Cognitive Search using the 'content' field.
-    If no query_text is provided, return all resumes.
-    """
-    endpoint = os.environ.get("AZURE_SEARCH_ENDPOINT")
-    api_key = os.environ.get("AZURE_SEARCH_API_KEY")
-    index_name = "resumesearch"  # Ensure this matches your index name
-
- 
+if st.button("Search"):
     try:
-        # Perform semantic search
-        results = client.search(
-            search_text=query_text if query_text else "*",  # Match all documents if no query_text
-            top=top_k,
-            query_type="semantic",  # Enable semantic search
-            semantic_configuration_name="semantic-config",  # Use the semantic configuration you created
-            select=["id", "content"]  # Only fetch the ID and content fields
-        )
+        with st.spinner("Searching..."):
+            # Retrieve data from your semantic search function
+            result_data = search_candidates(query_text=query_text, top_k=100)
+        
+        # Documents (our actual records)
+        documents = result_data.get("documents", [])
+        if documents:
+            st.write("### Resumes")
+            for doc in documents:
+                st.write(f"**ID**: {doc.get('id', 'Unknown')}")
+                st.write(f"**Score**: {doc.get('reranker_score', 0)}")
+                
+                # Safely handle strings for content
+                content_text = doc.get('content', 'No content available')
+                st.write(f"**Resume Content**: {content_text[:500]}...")  # Slice up to 500 chars
+                
+                # Display additional fields from your index (all are strings by default)
+                roles = doc.get('roles', '')
+                if roles:
+                    st.write(f"**Roles**: {roles}")
+                
+                role_category = doc.get('role_category', '')
+                if role_category:
+                    st.write(f"**Role Category**: {role_category}")
+                
+                career = doc.get('career', '')
+                if career:
+                    st.write(f"**Career**: {career}")
+                
+                contact = doc.get('contact', '')
+                if contact:
+                    st.write(f"**Contact**: {contact}")
 
-        # Parse and return the results
-        return [
-            {
-                "id": result.get("id", "Unknown"),
-                "content": result.get("content", "No content available")
-            }
-            for result in results
-        ]
+                personality = doc.get('personality', '')
+                if personality:
+                    st.write(f"**Personality**: {personality}")
+
+                name = doc.get('name', '')
+                if name:
+                    st.write(f"**Name**: {name}")
+
+                keywords = doc.get('keywords', '')
+                if keywords:
+                    st.write(f"**Keywords**: {keywords}")
+
+                # If you have chunk, title, text_vector, or resume_url, display them similarly:
+                chunk = doc.get('chunk', '')
+                if chunk:
+                    st.write(f"**Chunk**: {chunk}")
+                
+                title = doc.get('title', '')
+                if title:
+                    st.write(f"**Title**: {title}")
+                
+                resume_url = doc.get('resume_url', '')
+                if resume_url:
+                    st.write(f"**Resume URL**: {resume_url}")
+
+                text_vector = doc.get('text_vector', '')
+                if text_vector:
+                    st.write(f"**Text Vector**: {text_vector}")
+
+                st.write("---")
+        else:
+            st.info("No resumes found.")
+
+        # Semantic answers (extractive answers from Azure Cognitive Search)
+        semantic_answers = result_data.get("semantic_answers", [])
+        if semantic_answers:
+            st.write("### Semantic Answers")
+            for ans in semantic_answers:
+                highlights_or_text = ans.get('highlights') or ans.get('text') or ''
+                st.write(f"**Answer** (score={ans.get('score', 0)}): {highlights_or_text}")
+
     except Exception as e:
-        raise Exception(f"Failed to perform search: {e}")
-
-# Streamlit Resume Retrieval Page
-st.title("Resume Retrieval")
-st.subheader("View all resumes stored in the system")
-
-try:
-    with st.spinner("Loading resumes..."):
-        # Fetch all resumes
-        results = search_candidates(top_k=100)
-
-    # Display results
-    if results:
-        st.write("### Resumes")
-        for result in results:
-            st.write(f"**ID**: {result['id']}")
-            st.write(f"**Resume Content**: {result['content'][:500]}...")  # Display first 500 characters
-            st.write("---")
-    else:
-        st.info("No resumes found.")
-except Exception as e:
-    st.error(f"Failed to load resumes: {e}")
+        st.error(f"Failed to load resumes: {e}")

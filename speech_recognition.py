@@ -6,8 +6,19 @@ from embedding_service import generate_embedding, store_embedding
 from azure_blob_storage import AzureBlobStorage
 from azure.search.documents import SearchClient
 from azure.core.credentials import AzureKeyCredential
+from search_service import search_candidates
+
+# result_data = search_candidates(query_text="Who makes a good engineer??")
+# # Show answers
+# for ans in result_data["semantic_answers"]:
+#     print(f"Semantic Answer (score={ans['score']}): {ans['highlights'] or ans['text']}")
+
+# # Show documents
+# for doc in result_data["documents"]:
+#     print(doc["id"], doc["reranker_score"], doc["content"][:100], doc["caption"])
 
 # Instantiate AzureBlobStorage
+
 blob_storage = AzureBlobStorage()
 
 def recognize_from_microphone():
